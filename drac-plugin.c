@@ -8,9 +8,12 @@
  *
  * based:
  *   http://dovecot.org/patches/1.1/drac.c
+ *
+ * Hacked for IPv6 and dovecot-2.2 by Anton Lundin <glance@acc.umu.se>
+ *
  */
 #include "lib.h"
-#include "network.h"
+#include "net.h"
 #include "ioloop.h"
 #include "mail-user.h"
 #include "mail-storage-private.h"
@@ -19,45 +22,55 @@
 
 /* default parameters */
 #define DRAC_TIMEOUT_SECS	(60)
-#define DRAC_HOST		"localhost"
+#define DRAC_HOST               "127.0.0.1"
 
 
 /* libdrac function */
-int dracauth(char *, unsigned long, char **);
+int dracauth(const char *, unsigned long, char **);
+int dracauth6(const char *host, const unsigned char *userip6, char **errmsg);
 
-const char *drac_plugin_version = DOVECOT_VERSION;
+const char *drac_plugin_version = DOVECOT_ABI_VERSION;
 
 static struct timeout *to_drac = NULL;
 static const char *drachost = NULL; /* dracd host */
-static unsigned long in_ip = 0; /* remote ip address */
+static struct ip_addr ip; /* remote ip address */
 static unsigned long dractout = 0; /* drac timeout secs */
 
 static void drac_timeout(void *context ATTR_UNUSED)
 {
     char *err;
+    struct ip_addr ipv4 = ip;
 
-    if(dracauth((char *)drachost, in_ip, &err) != 0) {
-        i_error("%s: dracauth() failed: %s", __FUNCTION__, err);
+    if (IPADDR_IS_V4(&ipv4) || (net_ipv6_mapped_ipv4_convert(&ip, &ipv4) == 0)) {
+        i_info("drac_timeout() IP is ipv4(%s)",net_ip2addr(&ipv4));
+        if (dracauth(drachost, (unsigned long) ipv4.u.ip4.s_addr, &err) != 0) {
+            i_error("%s: dracauth() failed: %s", __FUNCTION__, err);
+        }
+    } else if(IPADDR_IS_V6(&ip)) {
+        i_info("drac_timeout() IP is ipv6(%s)",net_ip2addr(&ip));
+        if (dracauth6(drachost, (const unsigned char *) &ip.u.ip6.s6_addr, &err) != 0) {
+            i_error("%s: dracauth6() failed: %s", __FUNCTION__, err);
+        }
+    } else {
+        i_error("drac_timeout() ip adress unrecognized, canceling myself.");
+        timeout_remove(&to_drac);
     }
 }
 
 static void drac_mail_user_created(struct mail_user *user)
 {
     const char *dractout_str;
-    char addrname[256];
     char *ep;
 
+    if (user->remote_ip == NULL) {
+        i_debug("%s Not a remote login", __FUNCTION__);
+        return;
+    }
+
     /* check address family */
-    if(user->remote_ip->family != AF_INET) {
-        if(inet_ntop(user->remote_ip->family, &user->remote_ip->u,
-           addrname, sizeof(addrname)-1) == NULL) {
-            strcpy(addrname, "<unknown>");
-        }
-        i_error("%s: Only IPv4 addresses are supported (%s)", __FUNCTION__,
-                addrname);
-    } else {
-        /* get remote IPv4 address... uum... */
-        memcpy(&in_ip, &user->remote_ip->u, sizeof(in_ip));
+    if(IPADDR_IS_V4(user->remote_ip) || IPADDR_IS_V6(user->remote_ip)) {
+        /* get remote IP address... uum... */
+        memcpy(&ip, user->remote_ip, sizeof(ip));
 
         /* get DRAC server name */
         drachost = mail_user_plugin_getenv(user, "dracdserver");
@@ -83,7 +96,12 @@ static void drac_mail_user_created(struct mail_user *user)
 
         /* connect to DRAC server */
         drac_timeout(NULL);
+#undef timeout_add
+#define timeout_add(msecs, callback, context) \
+        timeout_add(msecs, __LINE__, callback, context)
         to_drac = timeout_add(1000*dractout, drac_timeout, NULL);
+    } else {
+        i_error("%s: Only IPv4 and IPv6 addresses are supported", __FUNCTION__);
     }
 }
 
