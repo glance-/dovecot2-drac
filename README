@@ -1,0 +1,57 @@
+
+DRAC plugin for Dovecot-2.x
+
+Requirements
+-------------
+  The following softwares are required.
+
+  * dovecot-2.x
+  * libdrac
+
+Installation
+-------------
+  1) Build
+    Specify the dovecot source directory and run make command.
+
+    $ make DOVDIR=../dovecot-2.0.13
+
+    You can specify the drac lib directory.
+
+    $ make DOVDIR=../dovecot-2.0.14 LDFLAGS=-L/usr/local/drac/lib
+
+  2) Install
+    Copy "drac_plugin.so" to the dovecot lib directory.
+
+    $ su
+    # cp -pi drac_plugin.so /usr/lib64/dovecot/modules/
+
+  3) Configuration for dovecot
+    Add "drac" to mail_plugins field.
+
+    ex: /etc/dovecot/conf.d/10-mail.conf
+    ===================
+    mail_plugins = drac
+    ===================
+
+    Add "dracdserver" and "dracdtimeout" to plugin field.
+
+    ex: /etc/dovecot/conf.d/90-plugin.conf
+    ===========================
+    plugin {
+        ...snip...
+        dracdserver = localhost
+        dracdtimeout = 60
+    }
+    ===========================
+
+    Restart or reload dovecot daemon.
+
+    # service dovecot restart
+
+Download
+-------------
+  http://sourceforge.jp/projects/dovecot2-drac/
+
+Bug report to
+-------------
+  Please send email to our sourceforge address.
