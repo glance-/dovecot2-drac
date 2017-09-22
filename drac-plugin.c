@@ -98,7 +98,7 @@ static void drac_mail_user_created(struct mail_user *user)
         drac_timeout(NULL);
 #undef timeout_add
 #define timeout_add(msecs, callback, context) \
-        timeout_add(msecs, __LINE__, callback, context)
+        timeout_add(msecs, __FILE__, __LINE__, callback, context)
         to_drac = timeout_add(1000*dractout, drac_timeout, NULL);
     } else {
         i_error("%s: Only IPv4 and IPv6 addresses are supported", __FUNCTION__);
