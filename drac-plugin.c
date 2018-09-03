@@ -62,15 +62,15 @@ static void drac_mail_user_created(struct mail_user *user)
     const char *dractout_str;
     char *ep;
 
-    if (user->remote_ip == NULL) {
+    if (user->conn.remote_ip == NULL) {
         i_debug("%s Not a remote login", __FUNCTION__);
         return;
     }
 
     /* check address family */
-    if(IPADDR_IS_V4(user->remote_ip) || IPADDR_IS_V6(user->remote_ip)) {
+    if(IPADDR_IS_V4(user->conn.remote_ip) || IPADDR_IS_V6(user->conn.remote_ip)) {
         /* get remote IP address... uum... */
-        memcpy(&ip, user->remote_ip, sizeof(ip));
+        memcpy(&ip, user->conn.remote_ip, sizeof(ip));
 
         /* get DRAC server name */
         drachost = mail_user_plugin_getenv(user, "dracdserver");
