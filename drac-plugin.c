@@ -42,12 +42,12 @@ static void drac_timeout(void *context ATTR_UNUSED)
     struct ip_addr ipv4 = ip;
 
     if (IPADDR_IS_V4(&ipv4) || (net_ipv6_mapped_ipv4_convert(&ip, &ipv4) == 0)) {
-        i_info("drac_timeout() IP is ipv4(%s)",net_ip2addr(&ipv4));
+        i_debug("drac_timeout() IP is ipv4(%s)",net_ip2addr(&ipv4));
         if (dracauth(drachost, (unsigned long) ipv4.u.ip4.s_addr, &err) != 0) {
             i_error("%s: dracauth() failed: %s", __FUNCTION__, err);
         }
     } else if(IPADDR_IS_V6(&ip)) {
-        i_info("drac_timeout() IP is ipv6(%s)",net_ip2addr(&ip));
+        i_debug("drac_timeout() IP is ipv6(%s)",net_ip2addr(&ip));
         if (dracauth6(drachost, (const unsigned char *) &ip.u.ip6.s6_addr, &err) != 0) {
             i_error("%s: dracauth6() failed: %s", __FUNCTION__, err);
         }
